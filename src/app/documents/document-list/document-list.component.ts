@@ -8,5 +8,5 @@ import { Component } from '@angular/core';
   styleUrl: './document-list.component.css'
 })
 export class DocumentListComponent {
-
+  documents: Document[]
 }
