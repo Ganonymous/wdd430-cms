@@ -7,12 +7,9 @@ import { ContactService } from '../contact.service';
   standalone: false,
   
   templateUrl: './contact-list.component.html',
-  styleUrl: './contact-list.component.css',
-  providers: [ContactService]
+  styleUrl: './contact-list.component.css'
 })
 export class ContactListComponent implements OnInit{
-  @Output() selectedContactEvent = new EventEmitter<Contact>();
-
   contacts: Contact[] = [];
 
   constructor(private contactService: ContactService){}
@@ -22,6 +19,6 @@ export class ContactListComponent implements OnInit{
   }
 
   onSelected(contact: Contact){
-    this.selectedContactEvent.emit(contact);
+    this.contactService.contactSelectedEvent.emit(contact);
   }
 }
