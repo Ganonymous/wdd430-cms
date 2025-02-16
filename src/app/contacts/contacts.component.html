@@ -4,11 +4,6 @@
         <cms-contact-list></cms-contact-list>
     </div>
     <div class="col-md-4">
-        <cms-contact-detail
-         *ngIf="selectedContact; else infoText"
-         [contact]="selectedContact"></cms-contact-detail>
-        <ng-template #infoText>
-            <p>Select a contact for more details</p>
-        </ng-template>
+        <router-outlet></router-outlet>
     </div>
 </div>

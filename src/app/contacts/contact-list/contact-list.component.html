@@ -3,14 +3,13 @@
         <div class="panel panel-default">
             <div class="panel-heading col-xs-12">
                 <h3 class="col-xs-8">Contacts</h3>
-                <button class="btn btn-success col-xs-4" style="margin-top: 15px;">New Contact</button>
+                <button class="btn btn-success col-xs-4" style="margin-top: 15px;" routerLink="new">New Contact</button>
             </div>
             <div class="panel-body">
                 <div class="col-xs-12">
                     <cms-contact-item
                      *ngFor="let listContact of contacts"
-                     [contact]="listContact"
-                     (click)="onSelected(listContact)"></cms-contact-item>
+                     [contact]="listContact"></cms-contact-item>
                 </div>
             </div>
         </div>

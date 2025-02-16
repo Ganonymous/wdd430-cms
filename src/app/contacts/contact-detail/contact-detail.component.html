@@ -12,8 +12,8 @@
                              style="max-height: 100px;">
                     </div>
                     <div class="col-sm-6">
-                        <button class="btn btn-primary" type="submit">Edit</button>
-                        <button class="btn btn-danger" type="button">Delete</button>
+                        <a class="btn btn-primary" routerLink="edit">Edit</a>
+                        <a class="btn btn-danger" (click)="onDelete()">Delete</a>
                     </div>
                 </div>
             </div>
