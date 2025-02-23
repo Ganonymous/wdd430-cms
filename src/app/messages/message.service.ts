@@ -1,13 +1,14 @@
 import { EventEmitter, Injectable } from '@angular/core';
 import { Message } from './message.model';
 import { MOCKMESSAGES } from './MOCKMESSAGES';
+import { Subject } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class MessageService {
   messages: Message[] = [];
-  messageChangedEvent = new EventEmitter<Message[]>();
+  messageListChangedEvent = new Subject<Message[]>();
 
   constructor() {
     this.messages = MOCKMESSAGES;
@@ -27,6 +28,6 @@ export class MessageService {
 
   addMessage(message: Message){
     this.messages.push(message);
-    this.messageChangedEvent.emit(this.messages.slice());
+    this.messageListChangedEvent.next(this.messages.slice());
   }
 }
