@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { MOCKDOCUMENTS } from './MOCKDOCUMENTS';
 import { Document } from './document.model';
 import { Subject } from 'rxjs';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 
 @Injectable({
   providedIn: 'root'
@@ -11,9 +12,8 @@ export class DocumentService {
   maxDocumentId: number;
   documentListChangedEvent = new Subject<Document[]>();
 
-  constructor() {
-    this.documents = MOCKDOCUMENTS;
-    this.maxDocumentId = this.getMaxId();
+  constructor(private http: HttpClient) {
+    this.retrieveDocuments();
   }
 
   getMaxId(): number{
@@ -25,6 +25,34 @@ export class DocumentService {
     }
 
     return maxId;
+  }
+
+  retrieveDocuments() {
+    this.http.get('https://wdd430-cms-3aa8c-default-rtdb.firebaseio.com/documents.json').subscribe({
+      next: (documents: Document[]) => {
+        this.documents = documents;
+        this.maxDocumentId = this.getMaxId();
+        this.documents.sort((a, b) => {
+          let aName = a.name.toLowerCase();
+          let bName = b.name.toLowerCase();
+          if(aName == bName){return 0}
+          return aName < bName ? -1 : 1
+        });
+        this.documentListChangedEvent.next(this.documents.slice());
+      },
+      error: (err) => console.error(err),
+      complete: () => console.log('Document GET complete')
+    })
+  }
+
+  storeDocuments(){
+    const docString = JSON.stringify(this.documents);
+    const headers = new HttpHeaders({'Content-Type': 'application/json'});
+    this.http.put('https://wdd430-cms-3aa8c-default-rtdb.firebaseio.com/documents.json', docString, {headers}).subscribe({
+      next: () => this.documentListChangedEvent.next(this.documents.slice()),
+      error: (err) => console.error(err),
+      complete: () => console.log('Document PUT complete')
+    })
   }
 
   getDocuments(): Document[] {
@@ -45,7 +73,7 @@ export class DocumentService {
     this.maxDocumentId++;
     newDocument.id = `${this.maxDocumentId}`;
     this.documents.push(newDocument);
-    this.documentListChangedEvent.next(this.documents.slice());
+    this.storeDocuments();
   }
 
   updateDocument(originalDocument: Document, newDocument: Document){
@@ -57,7 +85,7 @@ export class DocumentService {
 
     newDocument.id = originalDocument.id;
     this.documents[pos] = newDocument;
-    this.documentListChangedEvent.next(this.documents.slice());
+    this.storeDocuments();
   }
 
   deleteDocument(document: Document){
@@ -68,6 +96,6 @@ export class DocumentService {
     if(pos < 0){return}
 
     this.documents.splice(pos, 1);
-    this.documentListChangedEvent.next(this.documents.slice());
+    this.storeDocuments();
   }
 }
