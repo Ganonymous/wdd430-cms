@@ -9,51 +9,34 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 })
 export class ContactService {
   contactListChangedEvent = new Subject<Contact[]>();
-  maxContactId: number;
   contacts: Contact[] = [];
 
   constructor(private http: HttpClient) {
     this.retrieveContacts();
   }
 
-  getMaxId(): number{
-    let maxId = 0;
-
-    for(let contact of this.contacts){
-      const currentId = +contact.id;
-      if(currentId > maxId){maxId = currentId}
-    }
-
-    return maxId;
-  }
 
   retrieveContacts(){
-    this.http.get('https://wdd430-cms-3aa8c-default-rtdb.firebaseio.com/contacts.json').subscribe({
+    this.http.get('http://localhost:3000/contacts').subscribe({
       next: (contacts: Contact[]) => {
         this.contacts = contacts;
-        this.maxContactId = this.getMaxId();
-        this.contacts.sort((a, b) => {
-          let aName = a.name.toLowerCase();
-          let bName = b.name.toLowerCase();
-          if(aName == bName){return 0}
-          return aName < bName ? -1 : 1
-        });
-        this.contactListChangedEvent.next(this.contacts.slice());
+        this.sortAndSend();        
       },
       error: (err) => console.error(err),
       complete: () => console.log('Contacts GET complete')
     })
   }
 
-  storeContacts() {
-    const contactsString = JSON.stringify(this.contacts);
-    const putHeaders = new HttpHeaders({'Content-Type': 'application/json'});
-    this.http.put('https://wdd430-cms-3aa8c-default-rtdb.firebaseio.com/contacts.json', contactsString, {headers: putHeaders}).subscribe({
-      next: () => this.contactListChangedEvent.next(this.contacts.slice()),
-      error: (err) => console.error(err),
-      complete: () => console.log('Contacts PUT complete')
-    })
+  sortAndSend() {
+    this.contacts.sort((a, b) => {
+      let aName = a.name.toLowerCase();
+      let bName = b.name.toLowerCase();
+      if(aName == bName){return 0}
+      return aName < bName ? -1 : 1
+    });
+    this.contactListChangedEvent.next(this.contacts.slice());
   }
+
 
   getContacts(): Contact[] {
     return this.contacts.slice();
@@ -70,10 +53,14 @@ export class ContactService {
   addContact(newContact: Contact){
     if(!newContact){return}
 
-    this.maxContactId++;
-    newContact.id = `${this.maxContactId}`;
-    this.contacts.push(newContact);
-    this.storeContacts();
+    newContact.id = "";
+    
+    const headers = new HttpHeaders({'Content-Type': 'application/json'});
+    this.http.post<{message: string, contact: Contact}>('http://localhost:3000/contacts', newContact, {headers: headers})
+      .subscribe(responseData => {
+        this.contacts.push(responseData.contact);
+        this.sortAndSend();
+      })
   }
 
   updateContact(originalContact: Contact, newContact: Contact){
@@ -84,8 +71,13 @@ export class ContactService {
     if(pos < 0){return}
 
     newContact.id = originalContact.id;
-    this.contacts[pos] = newContact;
-    this.storeContacts();
+    
+    const headers = new HttpHeaders({'Content-Type': 'application/json'});
+    this.http.put(`http://localhost:3000/contacts/${originalContact.id}`, newContact, {headers: headers})
+      .subscribe((response: Response) => {
+        this.contacts[pos] = newContact;
+        this.sortAndSend();
+      })
   }
 
   deleteContact(contact: Contact){
@@ -95,7 +87,10 @@ export class ContactService {
 
     if(pos < 0){return}
 
-    this.contacts.splice(pos, 1);
-    this.storeContacts();
+    this.http.delete(`http://localhost:3000/contacts/${contact.id}`)
+      .subscribe((response: Response) => {
+        this.contacts.splice(pos, 1);
+        this.sortAndSend();
+      })
   }
 }

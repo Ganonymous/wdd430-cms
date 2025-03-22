@@ -9,51 +9,34 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 })
 export class DocumentService {
   documents: Document[] = [];
-  maxDocumentId: number;
   documentListChangedEvent = new Subject<Document[]>();
 
   constructor(private http: HttpClient) {
     this.retrieveDocuments();
   }
 
-  getMaxId(): number{
-    let maxId = 0;
-
-    for(let document of this.documents){
-      let currentId = +document.id;
-      if(currentId > maxId){ maxId = currentId; }
-    }
-
-    return maxId;
-  }
 
   retrieveDocuments() {
-    this.http.get('https://wdd430-cms-3aa8c-default-rtdb.firebaseio.com/documents.json').subscribe({
+    this.http.get('http://localhost:3000/documents').subscribe({
       next: (documents: Document[]) => {
         this.documents = documents;
-        this.maxDocumentId = this.getMaxId();
-        this.documents.sort((a, b) => {
-          let aName = a.name.toLowerCase();
-          let bName = b.name.toLowerCase();
-          if(aName == bName){return 0}
-          return aName < bName ? -1 : 1
-        });
-        this.documentListChangedEvent.next(this.documents.slice());
+        this.sortAndSend();
       },
       error: (err) => console.error(err),
       complete: () => console.log('Document GET complete')
     })
   }
 
-  storeDocuments(){
-    const docString = JSON.stringify(this.documents);
-    const headers = new HttpHeaders({'Content-Type': 'application/json'});
-    this.http.put('https://wdd430-cms-3aa8c-default-rtdb.firebaseio.com/documents.json', docString, {headers}).subscribe({
-      next: () => this.documentListChangedEvent.next(this.documents.slice()),
-      error: (err) => console.error(err),
-      complete: () => console.log('Document PUT complete')
-    })
+  sortAndSend(){
+    this.documents.sort((a, b) => {
+      let aName = a.name.toLowerCase();
+      let bName = b.name.toLowerCase();
+      if(aName == bName){return 0}
+      return aName < bName ? -1 : 1
+    });
+    this.documentListChangedEvent.next(this.documents.slice());
   }
+
 
   getDocuments(): Document[] {
     return this.documents.slice();
@@ -70,10 +53,14 @@ export class DocumentService {
   addDocument(newDocument: Document){
     if(!newDocument){return}
 
-    this.maxDocumentId++;
-    newDocument.id = `${this.maxDocumentId}`;
-    this.documents.push(newDocument);
-    this.storeDocuments();
+    newDocument.id = "";
+
+    const headers = new HttpHeaders({'Content-Type': 'application/json'});
+    this.http.post<{message: String, document: Document}>('http://localhost:3000/documents', newDocument, {headers: headers})
+      .subscribe(responseData => {
+        this.documents.push(responseData.document);
+        this.sortAndSend();
+      })
   }
 
   updateDocument(originalDocument: Document, newDocument: Document){
@@ -84,8 +71,13 @@ export class DocumentService {
     if(pos < 0){return}
 
     newDocument.id = originalDocument.id;
-    this.documents[pos] = newDocument;
-    this.storeDocuments();
+
+    const headers = new HttpHeaders({'Content-Type': 'application/json'});
+    this.http.put(`http://localhost:3000/documents/${originalDocument.id}`, newDocument, {headers: headers})
+      .subscribe((response: Response) => {
+        this.documents[pos] = newDocument;
+        this.sortAndSend();
+      });
   }
 
   deleteDocument(document: Document){
@@ -95,7 +87,10 @@ export class DocumentService {
 
     if(pos < 0){return}
 
-    this.documents.splice(pos, 1);
-    this.storeDocuments();
+    this.http.delete(`http://localhost:3000/documents/${document.id}`)
+      .subscribe((response: Response) => {
+        this.documents.splice(pos, 1);
+        this.sortAndSend();
+      })
   }
 }

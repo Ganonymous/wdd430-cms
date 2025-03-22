@@ -9,48 +9,30 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 })
 export class MessageService {
   messages: Message[] = [];
-  maxMessageId: number;
   messageListChangedEvent = new Subject<Message[]>();
 
   constructor(private http: HttpClient) {
     this.retrieveMessages();
   }
 
-  getMaxId(): number {
-    let maxId = 0;
-
-    for(let message of this.messages){
-      let currentId = +message.id;
-      if(currentId > maxId){maxId = currentId};
-    }
-
-    return maxId;
-  }
-
   retrieveMessages() {
-    this.http.get('https://wdd430-cms-3aa8c-default-rtdb.firebaseio.com/messages.json').subscribe({
+    this.http.get('http://localhost:3000/messages').subscribe({
       next: (messages: Message[]) => {
         this.messages = messages;
-        this.maxMessageId = this.getMaxId();
-        this.messages.sort((a, b) => {
-          return (+a.id) - (+b.id);
-        });
-        this.messageListChangedEvent.next(this.messages.slice());
+        this.sortAndSend();
       },
       error: (err) => console.error(err),
       complete: () => console.log('Messages GET complete')
     })
   }
 
-  storeMessages() {
-    const messagesString = JSON.stringify(this.messages);
-    const headers = new HttpHeaders({'Content-Type': 'application/json'});
-    this.http.put('https://wdd430-cms-3aa8c-default-rtdb.firebaseio.com/messages.json', messagesString, {headers}).subscribe({
-      next: () => this.messageListChangedEvent.next(this.messages.slice()),
-      error: (err) => console.error(err),
-      complete: () => console.log('Document PUT complete')
-    })
+  sortAndSend(){
+    this.messages.sort((a, b) => {
+      return (+a.id) - (+b.id);
+    });
+    this.messageListChangedEvent.next(this.messages.slice());
   }
+
 
   getMessages(): Message[] {
       return this.messages.slice();
@@ -64,12 +46,47 @@ export class MessageService {
     return returnVal;
   }
 
-  addMessage(message: Message){
-    if(!message) return;
-
-    this.maxMessageId++;
-    message.id = `${this.maxMessageId}`
-    this.messages.push(message);
-    this.storeMessages();
-  }
+  addMessage(newMessage: Message){
+      if(!newMessage){return}
+  
+      newMessage.id = "";
+  
+      const headers = new HttpHeaders({'Content-Type': 'application/json'});
+      this.http.post<{message: String, created: Message}>('http://localhost:3000/messages', newMessage, {headers: headers})
+        .subscribe(responseData => {
+          this.messages.push(responseData.created);
+          this.sortAndSend();
+        })
+    }
+  
+    updateMessage(originalMessage: Message, newMessage: Message){
+      if(!originalMessage || !newMessage){return}
+  
+      const pos = this.messages.indexOf(originalMessage);
+  
+      if(pos < 0){return}
+  
+      newMessage.id = originalMessage.id;
+  
+      const headers = new HttpHeaders({'Content-Type': 'application/json'});
+      this.http.put(`http://localhost:3000/messages/${originalMessage.id}`, newMessage, {headers: headers})
+        .subscribe((response: Response) => {
+          this.messages[pos] = newMessage;
+          this.sortAndSend();
+        });
+    }
+  
+    deleteMessage(message: Message){
+      if(!message){return}
+  
+      const pos = this.messages.indexOf(message);
+  
+      if(pos < 0){return}
+  
+      this.http.delete(`http://localhost:3000/messages/${message.id}`)
+        .subscribe((response: Response) => {
+          this.messages.splice(pos, 1);
+          this.sortAndSend();
+        })
+    }
 }
